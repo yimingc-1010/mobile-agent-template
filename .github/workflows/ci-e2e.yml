@@ -118,7 +118,8 @@ jobs:
   ios:
     needs: changes
     if: needs.changes.outputs.app == 'true'
-    runs-on: macos-15
+    # Expo SDK 57 needs Swift 6.2+ (Xcode 26); macos-26 defaults to Xcode 26.x.
+    runs-on: macos-26
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v7.0.1
