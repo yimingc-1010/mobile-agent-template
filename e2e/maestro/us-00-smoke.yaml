@@ -1,0 +1,11 @@
+# US-00 smoke: the app launches and shows the home screen.
+# File names map to user story ids (us-<NN>-<slug>.yaml) for requirement coverage.
+appId: com.example.apptemplate
+---
+- launchApp:
+    clearState: true
+- assertVisible:
+    id: home-title
+- assertVisible:
+    id: app-version
+- takeScreenshot: us-00-home
