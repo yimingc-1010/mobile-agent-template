@@ -59,10 +59,16 @@ cd apps/mobile && npx expo install <pkg>   # 新增套件一律用這個，不�
 | T2 | Android 模擬器 + Maestro（KVM 硬體加速） | Linux runner |
 | T3 | iOS 模擬器 + Maestro | macOS runner |
 
-- Implementer 本機驗證全綠的定義是 T1 + T2。
-- **原生層快取**：以 `@expo/fingerprint` 計算原生層雜湊；未變則從快取取出已 build 的 app 安裝到模擬器，只更新 JS；改變才重新 native build。
+- Implementer 本機驗證全綠的定義是 T1 + T2。在 CI 的 agent job 中沒有模擬器，T2 交由 PR 後的 E2E workflow。
+- **CI 實作**（`.github/workflows/ci-e2e.yml`，workflow 名稱 `E2E`）：
+  - `android`（T2）：`expo prebuild` → Release APK（只建 x86_64，內嵌 JS bundle 與 fakes）→ Android 35 模擬器（KVM）→ `npm run e2e`。
+  - `ios`（T3）：`expo prebuild` → `pod install` → 模擬器用 Release build（不簽章）→ 最新 iOS runtime 的 iPhone 模擬器 → `npm run e2e`。
+  - 只改 `docs/`、`*.md`、issue 範本的 PR 會跳過兩個 job（跳過視為通過）。
+  - Maestro 截圖與 JUnit 報告上傳為 artifact `e2e-android`、`e2e-ios`。
+- **Required checks**（branch protection）：base 的 `verify`、`audit`、`secrets`，加上本平台的 `android`、`ios`。
+- **原生層快取**：目前以 `@expo/fingerprint` 的雜湊當作 CocoaPods 快取的 key；Android 依賴 Gradle 快取。規劃中：fingerprint 未變時直接沿用已 build 的 dev client，只更新 JS，省掉整個 native build（需要先解決 dev client 連 Metro 的 deep link，見 `e2e/README.md`）。
 - **Runner 演進**：起步全部用 GitHub-hosted runner（macOS 只跑 T3）；macOS 費用或排隊成為瓶頸時，改用自架 Mac mini，以 Tart 一類工具為每個 job 開用完即丟的 macOS VM；或改用 EAS Workflows、Maestro Cloud。
-- 對外連線白名單另需放行 Expo 服務。
+- 對外連線白名單另需放行 Expo 服務（`*.expo.dev`、`*.expo.io`）、Maestro 安裝（`get.maestro.mobile.dev`、GitHub releases）、Gradle 與 Maven 套件庫、CocoaPods CDN。
 
 ## 平台特有 labels
 
@@ -82,7 +88,7 @@ cd apps/mobile && npx expo install <pkg>   # 新增套件一律用這個，不�
 | 正式 | `production` profile → App Store 與 Google Play 正式版 |
 
 - 版本號：`apps/mobile/app.json` 的 `expo.version`；build number 由 EAS 遠端自動遞增（`appVersionSource: remote` + `autoIncrement`）。
-- 預發布：`eas build --profile preview` + `eas submit`，由 CI 執行。
+- 預發布：Release agent 推送 tag `v<version>` 觸發 `.github/workflows/release-preview.yml`，以 `eas build --profile preview --auto-submit-with-profile preview` 在 EAS 上 build 並送到 TestFlight 與 Play 內部測試。workflow 使用 GitHub environment `preview`，可在該 environment 加上 required reviewers，讓每次預發布都需要人類按下核准。
 - 正式發布：人類在 App Store Connect 與 Play Console 核對素材後按下送審，採分階段發布（phased rollout）。
 - 熱修復與回滾：只動 JS 層的修正可以用 EAS Update 發布或回滾；動到原生層一律重新 build 並送審。
 
@@ -104,6 +110,12 @@ cd apps/mobile && npx expo install <pkg>   # 新增套件一律用這個，不�
 - 2023 年 11 月後建立的 Google Play 個人帳號，上正式版前須完成 12 位測試者、連續 14 天的封閉測試。
 - 建立 App Store Connect / Play Console 的 app 條目；`apps/mobile/app.json` 的 `ios.bundleIdentifier` 與 `android.package` 必須一致。
 - 連結 EAS 專案（`npx eas-cli@latest init`），設定 EAS secrets。
+- 在 expo.dev 建立 access token，存成 GitHub secret `EXPO_TOKEN`（只給 `preview` environment 使用更佳）。
+- 補齊 `apps/mobile/eas.json` 的 `submit.preview`：iOS 的 `ascAppId`；Android 的 `track: internal` 與 Google Play service account（上傳到 EAS credentials，不放進 repo）。App Store Connect API key 同樣放在 EAS credentials。
+
+## 選配工具
+
+目前沒有。新增平台專屬工具時列在這裡（命名規則見 `docs/template.md`「客製化工具」）。
 
 ## 平台受保護路徑
 

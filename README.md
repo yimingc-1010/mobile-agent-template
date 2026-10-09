@@ -52,7 +52,18 @@ git push -u origin main
 
 修改受保護路徑時，以 `CLAUDE_ALLOW_PROTECTED_EDITS=1 claude` 啟動 Claude Code。
 
-## 尚未包含（流程第 2 步）
+## CI
 
-- `.github/workflows/`：base 提供 agent 調度（`agent-*.yml`），本平台提供 CI 與發布（`ci-*.yml`、`release-*.yml`）
-- 原生層 fingerprint 快取與 dev client 的 e2e 連線方式（見 `e2e/README.md`）
+| Workflow | 來源 | 用途 |
+| --- | --- | --- |
+| `verify.yml`（Verify） | base | T1：verify、覆蓋率、npm audit、gitleaks |
+| `agent-*.yml` | base | Implementer、Reviewer + auto-merge、QA、escalate |
+| `ci-e2e.yml`（E2E） | 平台 | T2 Android 模擬器、T3 iOS 模擬器上的 Maestro |
+| `release-preview.yml` | 平台 | tag `v*` → EAS build → TestFlight / Play 內部測試 |
+
+啟用前要先完成 `docs/agent-ci.md`（GitHub App、secrets、branch protection）與 `docs/platform.md` 的「一次性設定」（`EXPO_TOKEN`、`eas.json` 的 submit 設定）。
+
+## 尚未包含
+
+- 以 fingerprint 沿用 dev client、跳過 native build（見 `docs/platform.md`「驗證分層」）
+- PM、Architect、Release agent 的自動觸發（目前由人類以 skill 啟動）

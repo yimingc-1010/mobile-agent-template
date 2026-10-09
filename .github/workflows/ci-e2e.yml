@@ -1,0 +1,199 @@
+# T2 (Android) and T3 (iOS) e2e for the mobile platform (docs/platform.md, 驗證分層).
+# The workflow name "E2E" is part of the base workflow contract (docs/template.md):
+# Agent · QA listens for its failures on main.
+name: E2E
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  MAESTRO_VERSION: 2.11.0
+  # Builds embed the JS bundle with fake services, so flows are deterministic.
+  EXPO_PUBLIC_USE_FAKES: '1'
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      app: ${{ steps.filter.outputs.app }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Skip e2e for docs-only changes
+        id: filter
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          # Skipped jobs count as passed for required checks, so docs-only PRs stay mergeable.
+          if [[ "$EVENT" != "pull_request" ]]; then
+            echo "app=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          changed=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")
+          if grep -qvE '^(docs/|\.github/ISSUE_TEMPLATE/)|\.md$' <<< "$changed"; then
+            echo "app=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "app=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  android:
+    needs: changes
+    if: needs.changes.outputs.app == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: step-security/harden-runner@v2.22.1
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-project
+
+      - uses: actions/setup-java@v6.0.1
+        with:
+          distribution: zulu
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v6.4.0
+
+      - name: Generate native project
+        working-directory: apps/mobile
+        run: npx expo prebuild --platform android --no-install
+
+      - name: Build release APK (x86_64 only)
+        working-directory: apps/mobile/android
+        run: ./gradlew :app:assembleRelease -PreactNativeArchitectures=x86_64 --no-daemon
+
+      - name: Install Maestro
+        run: |
+          curl -fsSL "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Run Maestro on the Android emulator
+        uses: reactivecircus/android-emulator-runner@v2.38.0
+        with:
+          api-level: 35
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          script: |
+            adb install -r apps/mobile/android/app/build/outputs/apk/release/app-release.apk
+            npm run e2e -- --format junit --output e2e-output/android/report.xml --test-output-dir e2e-output/android
+
+      - name: Upload e2e output
+        if: always()
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: e2e-android
+          path: e2e-output/android/
+          if-no-files-found: ignore
+
+  ios:
+    needs: changes
+    if: needs.changes.outputs.app == 'true'
+    runs-on: macos-15
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-project
+
+      - uses: actions/setup-java@v6.0.1
+        with:
+          distribution: zulu
+          java-version: '17'
+
+      - name: Fingerprint the native layer
+        id: fingerprint
+        run: |
+          hash=$(npx @expo/fingerprint apps/mobile \
+            | node -e 'let s="";process.stdin.on("data",c=>s+=c).on("end",()=>console.log(JSON.parse(s).hash))')
+          echo "Native fingerprint: $hash"
+          echo "hash=$hash" >> "$GITHUB_OUTPUT"
+
+      - name: Generate native project
+        working-directory: apps/mobile
+        run: npx expo prebuild --platform ios --no-install
+
+      - name: Restore CocoaPods (keyed by native fingerprint)
+        uses: actions/cache@v6.1.0
+        with:
+          path: apps/mobile/ios/Pods
+          key: pods-${{ runner.os }}-${{ steps.fingerprint.outputs.hash }}
+
+      - name: Install pods
+        working-directory: apps/mobile/ios
+        run: pod install
+
+      - name: Build for the simulator (Release)
+        working-directory: apps/mobile/ios
+        run: |
+          set -o pipefail
+          workspace=$(ls -d ./*.xcworkspace | head -1)
+          scheme=$(basename "$workspace" .xcworkspace)
+          xcodebuild -workspace "$workspace" -scheme "$scheme" -configuration Release \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build CODE_SIGNING_ALLOWED=NO -quiet
+
+      - name: Install Maestro
+        run: |
+          curl -fsSL "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+
+      - name: Boot a simulator and install the app
+        run: |
+          # Newest iOS runtime, first available iPhone.
+          udid=$(xcrun simctl list devices available --json | node -e '
+            let s = ""; process.stdin.on("data", (c) => (s += c)).on("end", () => {
+              const devices = JSON.parse(s).devices;
+              const runtimes = Object.keys(devices).filter((r) => r.includes("iOS")).sort().reverse();
+              for (const r of runtimes) {
+                const phone = devices[r].find((d) => d.name.startsWith("iPhone"));
+                if (phone) { console.log(phone.udid); return; }
+              }
+              process.exit(1);
+            });')
+          xcrun simctl boot "$udid"
+          xcrun simctl bootstatus "$udid" -b
+          app=$(ls -d apps/mobile/ios/build/Build/Products/Release-iphonesimulator/*.app | head -1)
+          xcrun simctl install "$udid" "$app"
+
+      - name: Run Maestro on the iOS simulator
+        run: npm run e2e -- --format junit --output e2e-output/ios/report.xml --test-output-dir e2e-output/ios
+
+      - name: Upload e2e output
+        if: always()
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: e2e-ios
+          path: e2e-output/ios/
+          if-no-files-found: ignore
