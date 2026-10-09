@@ -34,7 +34,7 @@ block() {
 }
 
 case "$rel" in
-  .github/workflows/* | .github/CODEOWNERS | \
+  .github/workflows/* | .github/actions/* | .github/CODEOWNERS | \
   .claude/settings.json | .claude/hooks/* | .claude/skills/* | .claude/agents/* | \
   .claude/protected-paths.platform | \
   CLAUDE.md | docs/process.md | docs/platform.md | docs/template.md)

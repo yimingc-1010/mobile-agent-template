@@ -1,0 +1,40 @@
+# Escalation (docs/process.md, 例外處理): when an agent hands work back to a human,
+# assign the owner and mention them so GitHub notifies them. No agent runs here.
+name: Agent · Escalate
+
+on:
+  issues:
+    types: [labeled]
+  pull_request:
+    types: [labeled]
+
+permissions:
+  contents: read
+
+jobs:
+  notify:
+    if: contains(fromJSON('["blocked","needs-human","needs-spec","needs-design"]'), github.event.label.name)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+      pull-requests: write
+    steps:
+      - name: Assign and mention the owner
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          NUMBER: ${{ github.event.issue.number || github.event.pull_request.number }}
+          LABEL: ${{ github.event.label.name }}
+          OWNER: ${{ vars.HUMAN_OWNER || github.repository_owner }}
+        run: |
+          case "$LABEL" in
+            blocked)      why="Implementer 同一個問題失敗 3 次，需要人類診斷。" ;;
+            needs-human)  why="需要人類裁決（例如 review 來回超過 3 輪）。自動化已暫停。" ;;
+            needs-spec)   why="需求不清，需要 PM 階段處理：請補充需求，或以 /pm 啟動 PM agent。" ;;
+            needs-design) why="設計行不通，需要 Architect 階段處理：請以 /architect 啟動 Architect agent。" ;;
+          esac
+          # The issues API covers both issues and pull requests.
+          gh api "repos/$REPO/issues/$NUMBER/assignees" -X POST -f "assignees[]=$OWNER" > /dev/null || true
+          gh api "repos/$REPO/issues/$NUMBER/comments" -X POST \
+            -f body="@${OWNER} 這張已標記 \`${LABEL}\`：${why}" > /dev/null
