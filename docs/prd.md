@@ -15,7 +15,7 @@
 
 ### User stories
 
-每個 story 一個編號，對應 `e2e/maestro/us-<NN>-<slug>.yaml`。
+每個 story 一個編號，對應 `e2e/` 下檔名以 `us-<NN>-<slug>` 開頭的測試。
 
 #### US-01 <標題>
 

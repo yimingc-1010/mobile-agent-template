@@ -19,13 +19,15 @@ labels: []
 
 ## 對應測試
 
+<!-- 測試位置見 docs/platform.md 的「測試配置」。 -->
+
 - unit: `packages/core/src/xxx.test.ts`
-- component: `apps/mobile/src/__tests__/xxx.test.tsx`
-- e2e: `e2e/maestro/us-NN-xxx.yaml`
+- component:
+- e2e: `e2e/.../us-NN-xxx`
 
 ## 檔案範圍
 
-- 可修改：`apps/mobile/src/features/xxx/**`
+- 可修改：
 - 不可修改：其他所有路徑
 
 ## 依賴
@@ -38,5 +40,5 @@ labels: []
 
 ## 標記
 
-- [ ] 動到原生層（新增原生套件、config plugin、權限）→ 加上 `native-change`
 - [ ] 修改共用介面、schema 或導覽結構 → 這是契約票，加上 `contract`
+- [ ] 符合 `docs/platform.md`「平台特有 labels」的條件 → 加上對應 label

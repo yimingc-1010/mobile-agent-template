@@ -11,7 +11,9 @@
     "test": "npm run test --workspaces --if-present",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "verify": "npm run typecheck && npm run lint && npm run test && npm run format:check"
+    "verify": "npm run typecheck && npm run lint && npm run test && npm run format:check",
+    "e2e": "maestro test e2e/maestro",
+    "e2e:one": "maestro test"
   },
   "devDependencies": {
     "prettier": "^3.6.2"

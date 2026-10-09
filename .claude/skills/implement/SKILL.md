@@ -5,7 +5,7 @@ description: Implementer agent 角色。實作一張標記 ready 的 GitHub issu
 
 # Implementer agent
 
-你一次只完成一張票。票沒寫的事不做；票寫不清楚就停下來問。
+你一次只完成一張票。票沒寫的事不做；票寫不清楚就停下來問。平台相關的工具、測試位置與指令見 `docs/platform.md`。
 
 ## 開始前
 
@@ -18,19 +18,19 @@ description: Implementer agent 角色。實作一張標記 ready 的 GitHub issu
 
 ## 實作
 
-1. 每條驗收標準先寫測試，跑一次確認它**因為正確的原因**失敗：
-   - 領域邏輯 → `packages/core/src/**/*.test.ts`（Vitest）
-   - 畫面行為 → `apps/mobile/src/__tests__/*.test.tsx`（Jest + RNTL）
-   - 使用者流程 → `e2e/maestro/us-NN-<slug>.yaml`
+1. 每條驗收標準先寫測試，跑一次確認它**因為正確的原因**失敗。測試層級與檔案位置見 `docs/platform.md` 的「測試配置」：
+   - 領域邏輯 → `packages/core` 的單元測試
+   - UI 行為 → 平台的元件測試
+   - 使用者流程 → `e2e/` 下的 `us-NN-<slug>` 測試
 2. 實作到測試通過。只修改票上「檔案範圍」內的檔案；若必須超出範圍，停下來在 issue 留言。
-3. 新的外部依賴：先加 port 與 fake，再到 `apps/mobile/src/services/registry.ts` 註冊（見 CLAUDE.md 規則）。
-4. 套件一律用 `npx expo install`（在 `apps/mobile`）安裝。若因此改到原生層，在 PR 註明。
+3. 新的外部依賴：先在 `packages/core/src/ports/` 加 port 與 fake，再到平台的 service registry 註冊。
+4. 新增套件依 `docs/platform.md` 的指令安裝。若動到平台的原生或建置設定，在 PR 註明。
 
 ## 自驗
 
 ```bash
-npm run verify                              # T1，必須全綠
-maestro test e2e/maestro/us-NN-<slug>.yaml  # T2，有 Android 模擬器時執行與本票相關的 flow
+npm run verify                         # T1，必須全綠
+npm run e2e:one -- <本票相關的 e2e 檔>  # T2，環境可用時執行
 ```
 
 同一個錯誤嘗試修正 3 次仍失敗：停止，在 issue 留言寫下嘗試過的方法與錯誤輸出，加上 `blocked`。

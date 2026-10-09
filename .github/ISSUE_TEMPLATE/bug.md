@@ -19,13 +19,13 @@ labels: ['bug']
 
 ## 環境
 
-- 來源：CI e2e | 實機測試 | 商店審查 | 使用者回報
+- 來源：CI e2e | 人工驗收 | 發布審查 | 使用者回報
 - 平台與版本：
 - build / commit：
 
 ## 證據
 
-<!-- Maestro flow、截圖、log、CI run 連結。 -->
+<!-- 失敗的 e2e 測試、截圖、log、CI run 連結。 -->
 
 ## 嚴重度
 

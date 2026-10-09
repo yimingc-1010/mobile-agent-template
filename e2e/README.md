@@ -8,8 +8,10 @@
 Run locally (requires [Maestro](https://maestro.dev) and a booted simulator/emulator with the app installed):
 
 ```bash
-maestro test e2e/maestro
+npm run e2e                                       # all flows
+npm run e2e:one -- e2e/maestro/us-00-smoke.yaml   # one flow
 ```
 
-Open item for pipeline setup (step 2): flows currently assume a build with the JS bundle embedded.
-Running them against a cached dev client also needs a deep link to the Metro server before `launchApp`.
+Open item for pipeline setup (step 2): flows currently assume a build with the JS bundle embedded
+(`e2e` profile in `apps/mobile/eas.json`). Running them against a cached dev client also needs a deep
+link to the Metro server before `launchApp`.

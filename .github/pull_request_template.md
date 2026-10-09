@@ -15,12 +15,12 @@ Closes #<!-- 票號 -->
 <!-- 實際執行的指令與結果摘要。 -->
 
 - [ ] `npm run verify`（T1）
-- [ ] Android e2e（T2）：`maestro test e2e/maestro/<flow>.yaml`
-- 原生層 fingerprint：未變 | 已變（說明原因）
+- [ ] `npm run e2e:one -- <檔案>`（T2）
+- 平台要求的其他資訊（見 `docs/platform.md`）：
 
 ## 截圖
 
-<!-- UI 變更必附 iOS 與 Android 截圖，或 CI artifact 連結。 -->
+<!-- UI 變更必附截圖（平台要求見 docs/platform.md），或 CI artifact 連結。 -->
 
 ## 範圍確認
 

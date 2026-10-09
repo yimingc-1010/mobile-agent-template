@@ -2,9 +2,14 @@
 # Changes require review from a human code owner (enable "Require review from Code Owners"
 # in the main branch protection rule). Replace @OWNER with your GitHub username or team.
 
+# Base (agent-template-base)
 /.github/workflows/      @OWNER
 /.github/CODEOWNERS      @OWNER
 /.claude/                @OWNER
 /CLAUDE.md               @OWNER
-/apps/mobile/eas.json    @OWNER
 /docs/process.md         @OWNER
+/docs/platform.md        @OWNER
+/docs/template.md        @OWNER
+
+# Platform: mobile
+/apps/mobile/eas.json    @OWNER

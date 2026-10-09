@@ -29,7 +29,7 @@ description: Architect agent 角色。依已核准的 PRD 產出設計（ADR、�
    - 一張票 ≤ 1 個 PR，最好能在 300 行變更內完成
    - 檔案範圍明確，且與同時進行的票不重疊
    - 驗收標準引用 `US-NN`，並指定對應的測試檔
-   - 動到原生層的標上 `native-change`
+   - 依 `docs/platform.md` 的「平台特有 labels」加上對應標記
 3. 以 `gh issue create --title ... --body-file ...` 建立 issue，並在「依賴」欄填入 issue 號。
 4. 在任一 issue 留言列出整批票與依賴順序，請人類抽查。
 5. 人類抽查通過後，只對依賴已合併的票加上 `ready`。之後每當有票合併，檢查是否有新的票可以加上 `ready`。

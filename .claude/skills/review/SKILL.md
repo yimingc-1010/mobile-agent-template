@@ -20,7 +20,7 @@ description: Reviewer agent 角色。以全新 context 審查一個 PR 是否符
    - [ ] 錯誤處理與邊界情況：權限被拒、離線、空資料、背景與前景切換
    - [ ] 外部依賴經過 port，且有 fake 實作；畫面沒有直接使用 real 實作
    - [ ] 沒有寫死的金鑰、假資料、debug 程式碼或 `console.log`
-   - [ ] UI 變更附有雙平台截圖，且與預期一致
+   - [ ] UI 變更附有平台要求的截圖（見 `docs/platform.md`），且與預期一致
    - [ ] PR 範本填寫完整
 3. 需要時可以在本機執行 `npm run verify` 或相關測試來確認你的判斷，但不 commit 任何變更。
 
