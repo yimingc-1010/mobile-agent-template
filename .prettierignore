@@ -1,0 +1,11 @@
+# Prettier also reads the root .gitignore. Well-known build output of supported platforms:
+.expo/
+.next/
+ios/
+android/
+dist/
+build/
+
+package-lock.json
+docs/
+*.md

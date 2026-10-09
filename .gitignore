@@ -1,0 +1,23 @@
+# dependencies
+node_modules/
+
+# build and test output
+dist/
+build/
+coverage/
+*.tsbuildinfo
+
+# logs
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# secrets and local env files
+.env*.local
+*.pem
+
+# macOS
+.DS_Store
+
+# claude code (personal overrides)
+.claude/settings.local.json
