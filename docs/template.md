@@ -24,8 +24,8 @@ flowchart TD
 
 | 類別 | 檔案 |
 | --- | --- |
-| 流程與 agent | `CLAUDE.md`、`docs/process.md`、`docs/template.md`、`.claude/skills/{pm,architect,implement,review,qa}/`、`.claude/agents/`、`.claude/hooks/` |
-| GitHub | `.github/ISSUE_TEMPLATE/`、`.github/pull_request_template.md`、`scripts/setup-labels.sh` |
+| 流程與 agent | `CLAUDE.md`、`docs/process.md`、`docs/template.md`、`docs/agent-ci.md`、`.claude/skills/{pm,architect,implement,review,qa}/`、`.claude/agents/`、`.claude/hooks/` |
+| GitHub | `.github/ISSUE_TEMPLATE/`、`.github/pull_request_template.md`、`.github/workflows/verify.yml`、`.github/workflows/agent-*.yml`、`.github/actions/{setup-project,setup-agent,run-agent}/`、`scripts/setup-labels.sh` |
 | 文件範本 | `docs/prd.md`、`docs/adr/000-template.md`、`docs/design/README.md`、`docs/agent-log.md`、`fixtures/README.md` |
 | 共用程式與工具 | `packages/core/`、`.editorconfig`、`.prettierrc.json`、`.prettierignore`、`.nvmrc`、根目錄 `.gitignore` |
 
@@ -46,6 +46,8 @@ flowchart TD
 - [ ] `scripts/setup-labels.platform.sh`：平台特有 labels（沒有就不建立）
 - [ ] `docs/qa/`：人工驗收腳本
 - [ ] 根目錄 `package.json` 實作 script 契約
+- [ ] `.github/workflows/ci-e2e.yml`：符合下方 workflow 契約的 e2e workflow
+- [ ] `.github/workflows/release-*.yml`：預發布 workflow
 
 ## Script 契約
 
@@ -57,6 +59,17 @@ skill、hook 與 CI 只呼叫以下名稱，不直接呼叫平台工具。換平
 | `npm run format` | 自動排版 |
 | `npm run e2e` | 全部 e2e |
 | `npm run e2e:one -- <file>` | 單一 e2e 檔案 |
+
+## Workflow 契約
+
+base 的 agent workflow 只透過以下名稱與平台 workflow 互動：
+
+| 項目 | 契約 |
+| --- | --- |
+| T1 | base 的 `verify.yml`，workflow 名稱 `Verify`，jobs：`verify`、`audit`、`secrets` |
+| T2/T3 | 平台的 `ci-e2e.yml`，workflow 名稱必須是 `E2E`；`Agent · QA` 以這個名稱監聽 main 上的失敗 |
+| 環境安裝 | 所有 workflow 以 `./.github/actions/setup-project` 安裝 Node 與依賴；平台額外的工具（JDK、模擬器、瀏覽器）在自己的 workflow 裡安裝 |
+| Required checks | 平台在 `docs/platform.md` 列出要加入 branch protection 的 e2e job 名稱 |
 
 ## 同步 base 的更新
 

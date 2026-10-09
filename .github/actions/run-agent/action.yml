@@ -1,0 +1,96 @@
+name: Run agent
+description: >-
+  Run Claude Code headless with an explicit tool allowlist (permission mode dontAsk:
+  anything not allowed is refused), a budget cap, and the full transcript uploaded as an
+  artifact. Project hooks and skills in .claude/ apply as usual.
+
+inputs:
+  prompt:
+    description: Task prompt. Pass only trusted text (numbers, fixed wording); never issue or PR content.
+    required: true
+  model:
+    description: Model ID
+    required: true
+  allowed-tools:
+    description: Newline-separated tool rules, for example Read or Bash(git diff:*)
+    required: true
+  disallowed-tools:
+    description: Newline-separated tool rules to refuse even if allowed elsewhere
+    required: false
+    default: ''
+  max-budget-usd:
+    description: Hard spending cap for this run
+    required: false
+    default: '10'
+  log-name:
+    description: Artifact name for the transcript
+    required: true
+  github-token:
+    description: Token for gh and git (an App installation token)
+    required: true
+  anthropic-api-key:
+    description: Anthropic API key (set this or claude-code-oauth-token)
+    required: false
+    default: ''
+  claude-code-oauth-token:
+    description: Claude Code OAuth token from `claude setup-token`
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - name: Run Claude Code
+      shell: bash
+      env:
+        PROMPT: ${{ inputs.prompt }}
+        MODEL: ${{ inputs.model }}
+        ALLOWED: ${{ inputs.allowed-tools }}
+        DISALLOWED: ${{ inputs.disallowed-tools }}
+        BUDGET: ${{ inputs.max-budget-usd }}
+        LOG_FILE: ${{ runner.temp }}/${{ inputs.log-name }}.jsonl
+        GH_TOKEN: ${{ inputs.github-token }}
+        INPUT_API_KEY: ${{ inputs.anthropic-api-key }}
+        INPUT_OAUTH_TOKEN: ${{ inputs.claude-code-oauth-token }}
+      run: |
+        set -euo pipefail
+        if [[ -n "$INPUT_API_KEY" ]]; then export ANTHROPIC_API_KEY="$INPUT_API_KEY"; fi
+        if [[ -n "$INPUT_OAUTH_TOKEN" ]]; then export CLAUDE_CODE_OAUTH_TOKEN="$INPUT_OAUTH_TOKEN"; fi
+        if [[ -z "${ANTHROPIC_API_KEY:-}${CLAUDE_CODE_OAUTH_TOKEN:-}" ]]; then
+          echo "::error::Set the ANTHROPIC_API_KEY or CLAUDE_CODE_OAUTH_TOKEN secret (docs/agent-ci.md)."
+          exit 1
+        fi
+
+        args=(-p "$PROMPT" --model "$MODEL" --permission-mode dontAsk
+              --max-budget-usd "$BUDGET" --output-format stream-json --verbose)
+        allowed=(); disallowed=()
+        while IFS= read -r rule; do if [[ -n "${rule// /}" ]]; then allowed+=("$rule"); fi; done <<< "$ALLOWED"
+        while IFS= read -r rule; do if [[ -n "${rule// /}" ]]; then disallowed+=("$rule"); fi; done <<< "$DISALLOWED"
+        args+=(--allowedTools "${allowed[@]}")
+        if (( ${#disallowed[@]} > 0 )); then args+=(--disallowedTools "${disallowed[@]}"); fi
+
+        status=0
+        claude "${args[@]}" > "$LOG_FILE" || status=$?
+
+        # Print the agent's final message to the log and the job summary.
+        node -e '
+          const fs = require("fs");
+          const lines = fs.readFileSync(process.argv[1], "utf8").trim().split("\n");
+          let result = null;
+          for (const l of lines) { try { const e = JSON.parse(l); if (e.type === "result") result = e; } catch {} }
+          const text = result
+            ? `**${result.subtype}** · cost $${(result.total_cost_usd ?? 0).toFixed(2)} · ${result.num_turns ?? "?"} turns\n\n${result.result ?? ""}`
+            : "No result event; see the transcript artifact.";
+          console.log(text);
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `### Agent result\n\n${text}\n`);
+        ' "$LOG_FILE"
+        exit "$status"
+
+    - name: Upload transcript
+      if: always()
+      uses: actions/upload-artifact@v7.0.2
+      with:
+        name: ${{ inputs.log-name }}
+        path: ${{ runner.temp }}/${{ inputs.log-name }}.jsonl
+        if-no-files-found: ignore
+        retention-days: 30
