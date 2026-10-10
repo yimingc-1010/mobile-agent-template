@@ -62,6 +62,16 @@ jobs:
         with:
           egress-policy: audit
 
+      - name: Free disk space
+        run: |
+          # The Gradle build plus the emulator system image exceed the runner's free disk.
+          # Remove toolchains this job never uses; the Android SDK is kept.
+          df -h /
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/share/swift \
+            /usr/local/share/boost /opt/hostedtoolcache/CodeQL
+          sudo docker image prune --all --force > /dev/null
+          df -h /
+
       - uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
