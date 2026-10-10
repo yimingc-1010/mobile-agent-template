@@ -21,7 +21,15 @@
 
 ## 1. 建立 GitHub App（兩個）
 
-在 GitHub → Settings → Developer settings → GitHub Apps → New GitHub App，各建立一個：
+**用腳本（建議）**：在 repo 根目錄執行
+
+```bash
+node scripts/create-agent-apps.mjs --repo <owner>/<repo>
+```
+
+腳本會開啟本機頁面，你在 GitHub 上各按一次「Create GitHub App」（GitHub 沒有用 token 建立 App 的 API），其餘自動完成：以 App Manifest 設定下表的權限、把 private key 存到 `~/.config/agent-ci/`（權限 600）、設定第 2 步的 App secrets 與四個 variables。金鑰不會印出。App 建立一次即可，之後的 repo 只要再以 `--repo` 執行，就會沿用已存的 App。最後仍需點開腳本印出的連結，把兩個 App 安裝到 repo，並自行設定模型的 secret。
+
+**手動**：在 GitHub → Settings → Developer settings → GitHub Apps → New GitHub App，各建立一個：
 
 | 設定 | author App（例：`<名稱>-agent`） | reviewer App（例：`<名稱>-reviewer`） |
 | --- | --- | --- |
