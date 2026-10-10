@@ -1,0 +1,46 @@
+# Pre-release (docs/platform.md, 發布管道): build with the EAS `preview` profile and submit
+# to TestFlight and Google Play internal testing. Triggered by the version tag that the
+# Release agent pushes on a QA-passed commit, or manually. Store review is never submitted here.
+name: Release · Preview
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-preview
+  cancel-in-progress: false
+
+jobs:
+  build-and-submit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Add required reviewers to this environment to gate pre-releases on a human.
+    environment: preview
+    steps:
+      - uses: step-security/harden-runner@v2.22.1
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-project
+
+      - name: Start EAS build and submit
+        working-directory: apps/mobile
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          if [[ -z "$EXPO_TOKEN" ]]; then
+            echo "::error::Set the EXPO_TOKEN secret (docs/platform.md, 一次性設定)."
+            exit 1
+          fi
+          # Builds run on EAS; this job only queues them. Track progress on expo.dev.
+          npx eas-cli@24.12.1 build --profile preview --platform all --non-interactive \
+            --auto-submit-with-profile preview

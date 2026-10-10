@@ -20,6 +20,7 @@
 - `docs/process.md`：流程、閘門、label 狀態機、例外處理（流程的 source of truth，與平台無關）
 - `docs/platform.md`：本 repo 的平台設定：技術棧、程式碼位置、測試配置、發布管道
 - `docs/template.md`：base 與平台 template 的分層、檔案所有權、同步方式
+- `docs/agent-ci.md`：agent 在 GitHub Actions 上的運作方式與設定
 - `docs/prd.md`：需求與 user stories（US-NN）
 - `docs/adr/`：技術決策；`docs/design/`：領域模型、模組、畫面
 - `docs/agent-log.md`：人類介入與回顧紀錄
@@ -56,7 +57,7 @@ npm run e2e:one -- <file>      # 單一 e2e 檔案
 
 以下路徑由 `.claude/hooks/protect-paths.sh` 阻擋修改，變更必須開票並由人類執行：
 
-`.github/workflows/`、`.github/CODEOWNERS`、`.claude/settings.json`、`.claude/hooks/`、`.claude/skills/`、`.claude/agents/`、`.claude/protected-paths.platform`、`CLAUDE.md`、`docs/process.md`、`docs/platform.md`、`docs/template.md`，以及 `.claude/protected-paths.platform` 列出的平台路徑。
+`.github/workflows/`、`.github/actions/`、`.github/CODEOWNERS`、`.claude/settings.json`、`.claude/hooks/`、`.claude/skills/`、`.claude/agents/`、`.claude/protected-paths.platform`、`CLAUDE.md`、`docs/process.md`、`docs/platform.md`、`docs/template.md`，以及 `.claude/protected-paths.platform` 列出的平台路徑。
 
 ## 永遠不做
 

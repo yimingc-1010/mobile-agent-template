@@ -1,0 +1,90 @@
+# T1 gate (docs/process.md, 驗證與品質閘門). Base-owned; platforms add e2e in a
+# workflow named "E2E" (docs/template.md, workflow 契約).
+name: Verify
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: step-security/harden-runner@v2.22.1
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-project
+
+      - name: npm run verify
+        run: npm run verify
+
+      - name: Core coverage (>= 80%)
+        run: npm run test:coverage -w @app/core
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: core-coverage
+          path: packages/core/coverage/
+          if-no-files-found: ignore
+
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: step-security/harden-runner@v2.22.1
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-project
+
+      - name: Block on critical vulnerabilities
+        run: npm audit --audit-level=critical
+
+      - name: Report high vulnerabilities (non-blocking)
+        run: |
+          if ! npm audit --audit-level=high > audit.txt; then
+            echo "::warning::npm audit reports high-severity vulnerabilities; see the job summary."
+            { echo '### npm audit (high, non-blocking)'; echo '```'; tail -40 audit.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  secrets:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: step-security/harden-runner@v2.22.1
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: gitleaks/gitleaks-action@v3.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_ENABLE_COMMENTS: false

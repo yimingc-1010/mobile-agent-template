@@ -102,7 +102,7 @@ Agent 之間不直接對話，而是以 GitHub 的 issue、label 與 PR 狀態�
 | 層 | 負責 | 使用 |
 | --- | --- | --- |
 | 狀態與溝通 | 誰該做什麼、做到哪、交接內容 | GitHub Issues、labels、PR、review comments |
-| 調度 | 狀態一變，就啟動對應角色的 agent | GitHub Actions 事件觸發，以 headless Claude Code 執行 |
+| 調度 | 狀態一變，就啟動對應角色的 agent | GitHub Actions 事件觸發，以 headless Claude Code 執行（`.github/workflows/agent-*.yml`，見 `docs/agent-ci.md`） |
 | 執行與觀察 | agent session 跑在哪裡、人如何介入 | 階段 4–5：CI runner；階段 1–3 與除錯：本機多 agent 工具或 Claude Code desktop |
 
 **Label 狀態機**（以 `scripts/setup-labels.sh` 建立；平台特有 label 見 `docs/platform.md`）
@@ -142,7 +142,7 @@ PR 要合併，必須同時滿足：下列 CI 關卡全部通過，且 Reviewer 
 | 元件測試 | 平台 UI 元件 | 本機 hook + CI | 每個 PR | 擋合併 |
 | E2E | 每個 user story 一個測試，在所有目標平台執行 | CI | 每個 PR 跑相關測試，main 每次合併跑全部 | 擋合併 |
 | 視覺回歸 | e2e 截圖 + 基準圖比對 | CI | 有 UI 變更的 PR | 由 Reviewer 判斷差異是否符合預期 |
-| 安全與依賴 | `npm audit`、secret 掃描 | CI | 每個 PR | 高風險項目擋合併 |
+| 安全與依賴 | `npm audit`、secret 掃描 | CI | 每個 PR | critical 等級與任何 secret 洩漏擋合併；high 等級列入報告，由人類決定 |
 | 人工驗收 | 人類依平台的驗收腳本操作 | 真實環境 | 每次預發布 | 擋正式發布 |
 
 本機一次跑完靜態檢查與單元/元件測試：`npm run verify`。
@@ -196,7 +196,7 @@ PR 要合併，必須同時滿足：下列 CI 關卡全部通過，且 Reviewer 
 
 - 申請與設定平台帳號（商店、雲端、網域等，清單見 `docs/platform.md`）
 - 產生簽章憑證、上傳金鑰、建立 API key，存入平台 secrets 與 GitHub secrets
-- 設定 main 分支保護規則、CODEOWNERS 與 CI 權限
+- 設定 main 分支保護規則、CODEOWNERS 與 CI 權限；建立 agent 使用的 GitHub App 與 secrets（見 `docs/agent-ci.md`）
 
 **agent 永遠不做的事**
 

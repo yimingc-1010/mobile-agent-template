@@ -4,6 +4,7 @@
 
 # Base (agent-template-base)
 /.github/workflows/      @OWNER
+/.github/actions/        @OWNER
 /.github/CODEOWNERS      @OWNER
 /.claude/                @OWNER
 /CLAUDE.md               @OWNER

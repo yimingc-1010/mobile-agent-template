@@ -1,0 +1,57 @@
+name: Setup agent
+description: >-
+  Mint a GitHub App installation token for an agent identity, make git and gh act as
+  that App, and install the Claude Code CLI. Requires the repository to be checked out.
+
+inputs:
+  client-id:
+    description: GitHub App client ID
+    required: true
+  private-key:
+    description: GitHub App private key
+    required: true
+  claude-code-version:
+    description: Claude Code CLI version to install
+    required: false
+    default: 2.1.295
+
+outputs:
+  token:
+    description: Installation token; pass it to later steps as GH_TOKEN
+    value: ${{ steps.app-token.outputs.token }}
+  bot-login:
+    description: The App's bot login, for example my-agent[bot]
+    value: ${{ steps.identity.outputs.login }}
+
+runs:
+  using: composite
+  steps:
+    - name: Mint App token
+      id: app-token
+      uses: actions/create-github-app-token@v3.2.0
+      with:
+        client-id: ${{ inputs.client-id }}
+        private-key: ${{ inputs.private-key }}
+        owner: ${{ github.repository_owner }}
+        repositories: ${{ github.event.repository.name }}
+
+    - name: Configure git identity and remote
+      id: identity
+      shell: bash
+      env:
+        GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
+        REPO: ${{ github.repository }}
+      run: |
+        login="${APP_SLUG}[bot]"
+        user_id=$(gh api "/users/${login}" --jq .id)
+        git config --global user.name "$login"
+        git config --global user.email "${user_id}+${login}@users.noreply.github.com"
+        # Pushes made with an App token (unlike GITHUB_TOKEN) trigger other workflows,
+        # which is what chains the agents together.
+        git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git"
+        echo "login=$login" >> "$GITHUB_OUTPUT"
+
+    - name: Install Claude Code
+      shell: bash
+      run: npm install --global "@anthropic-ai/claude-code@${{ inputs.claude-code-version }}"
